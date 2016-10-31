@@ -15,3 +15,89 @@ function samlauth_uninstall() {
     $samlauth_account_menu->delete();
   }
 }
+
+/**
+ * Port config storage.
+ */
+function samlauth_update_8200() {
+  $old_config = \Drupal::config('samlauth.authentication');
+  if ($old_config) {
+    $name_attr = $old_config->get('user_name_attribute');
+    $mail_attr = $old_config->get('user_mail_attribute');
+
+    // Port SAML settings.
+    \Drupal::configFactory()->getEditable('samlauth.configuration')
+      ->setData(array(
+        'providers' => array(
+          'sp' => array(
+            'entity_id_type' => 'custom',
+            'entity_id' => $old_config->get('sp_entity_id'),
+            'name_id_format' => $old_config->get('sp_name_id_format'),
+            'x509cert' => $old_config->get('sp_x509_certificate'),
+            'private_key' => $old_config->get('sp_private_key'),
+          ),
+          'idp' => array(
+            'entity_id' => $old_config->get('idp_entity_id'),
+            'single_sign_on_service' => $old_config->get('idp_single_sign_on_service'),
+            'single_log_out_service' => $old_config->get('idp_single_log_out_service'),
+            'change_password_service' => $old_config->get('idp_change_password_service'),
+            'x509cert' => $old_config->get('idp_x509_certificate'),
+          ),
+        ),
+        'advanced_settings' => array(
+          'security' => array(
+            'authn_requests_signed' => $old_config->get('security_authn_requests_sign'),
+            'want_messages_signed' => $old_config->get('security_messages_sign'),
+            'want_name_id' => $old_config->get('security_name_id_sign'),
+            'requested_authn_context' => $old_config->get('security_request_authn_context'),
+          ),
+        ),
+      ))->save();
+
+    // Port user settings.
+    \Drupal::configFactory()->getEditable('samlauth.user.settings')
+      ->setData(array(
+        'user_mapping' => array(
+          'attributes' => implode("\r\n", array_filter(array($name_attr, $mail_attr))),
+        ),
+        'route' => array(
+          'login' => 'user.page',
+          'logout' => '<front>',
+        ),
+        'account' => array(
+          'username' => '[user:display-name]',
+          'linking' => array(
+            'conjunction' => 'AND',
+          ),
+        ),
+      ))->save();
+
+    // Port user mappings.
+    $mapping_fields = array();
+    if ($old_config->get('map_users')) {
+      if (!empty($name_attr)) {
+        $mapping_fields['name'] = array(
+          'attribute' => $name_attr,
+          'settings' => array(
+            'use_account_linking' => 1,
+          ),
+        );
+      }
+      if (!empty($mail_attr)) {
+        $mapping_fields['mail'] = array(
+          'attribute' => $mail_attr,
+          'settings' => array(
+            'use_account_linking' => 1,
+          ),
+        );
+      }
+    }
+    \Drupal::configFactory()->getEditable('samlauth.user.mapping')
+      ->setData(array(
+        'user_mapping' => $mapping_fields,
+        'user_roles' => array(
+          'assigned_role' => array(),
+        ),
+      ))->save();
+  }
+}
