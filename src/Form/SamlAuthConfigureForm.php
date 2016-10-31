@@ -135,6 +135,13 @@ class SamlAuthConfigureForm extends ConfigFormBase {
       '#default_value' => $config->get('providers.idp.single_log_out_service'),
       '#required' => TRUE,
     ];
+    $form['providers']['idp']['change_password_service'] = [
+      '#type' => 'url',
+      '#title' => $this->t('Change Password Service'),
+      '#description' => $this->t('A endpoint where the SP will send the Change Password request.'),
+      '#default_value' => $config->get('providers.idp.change_password_service'),
+      '#required' => FALSE,
+    ];
     $form['providers']['idp']['x509cert'] = array(
       '#type' => 'textarea',
       '#title' => $this->t('x509 Certificate'),
